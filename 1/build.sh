@@ -11,8 +11,6 @@ CMD=(setup_host debootstrap run_chroot build_iso)
 
 DATE=`TZ="UTC" date +"%y%m%d-%H%M%S"`
 
-END_H2=`tput sgr0`
-
 function print_h1() {
   tput setaf 4 && tput bold
   echo "$@"
