@@ -11,11 +11,19 @@ CMD=(setup_host debootstrap run_chroot build_iso)
 
 DATE=`TZ="UTC" date +"%y%m%d-%H%M%S"`
 
-START_H1="\n`tput setaf 4 && tput bold`"
-END_H1=`tput sgr0`
-
-START_H2="\n`tput setaf 6 && tput bold`"
 END_H2=`tput sgr0`
+
+function print_h1() {
+  tput setaf 4 && tput bold
+  echo "$@"
+  tput sgr0
+}
+
+function print_h2() {
+  tput setaf 6 && tput bold
+  echo "$@"
+  tput sgr0
+}
 
 function help() {
     # if $1 is set, use $1 as headline message in help()
@@ -80,7 +88,7 @@ function check_host() {
 
 # Load configuration values from file
 function load_config() {
-    if [[ -f "$SCRIPT_DIR/config.sh" ]]; then 
+    if [[ -f "$SCRIPT_DIR/config.sh" ]]; then
         . "$SCRIPT_DIR/config.sh"
     else
         echo "Unable to find config file  $SCRIPT_DIR/config.sh, aborting."
@@ -89,23 +97,23 @@ function load_config() {
 }
 
 function setup_host() {
-    printf "${START_H1}→ RUNNING setup_host...\n${END_H1}"
+    print_h1 "→ RUNNING setup_host..."
     sudo apt update
     sudo apt install -y binutils debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools
     sudo mkdir -p chroot
 }
 
 function debootstrap() {
-    printf "${START_H1}→ RUNNING debootstrap...\n${END_H1}"
+    print_h1 "→ RUNNING debootstrap..."
     sudo debootstrap  --arch=amd64 --variant=minbase $TARGET_UBUNTU_VERSION chroot http://us.archive.ubuntu.com/ubuntu/
 }
 
 function run_chroot() {
-    printf "${START_H1}→ RUNNING run_chroot...\n${END_H1}"
-    
-    printf "${START_H2}• Preparing chroot environment...\n${END_H2}"
-    # we copy the packages folder into chroot so config.sh can still refer to the text files in packages 
-    
+    print_h1 "→ RUNNING run_chroot..."
+
+    print_h2 "• Preparing chroot environment..."
+    # we copy the packages folder into chroot so config.sh can still refer to the text files in packages
+
     sudo cp -r packages chroot/packages
 
     chroot_enter_setup
@@ -114,13 +122,13 @@ function run_chroot() {
     sudo ln -f $SCRIPT_DIR/chroot_build.sh chroot/root/chroot_build.sh
     if [[ -f "$SCRIPT_DIR/config.sh" ]]; then
         sudo ln -f $SCRIPT_DIR/config.sh chroot/root/config.sh
-    fi    
+    fi
 
-    printf "${START_H2}• Launching into chroot...\n${END_H2}"
+    print_h2 "• Launching into chroot..."
     # Launch into chroot environment to build install image.
     sudo chroot chroot /root/chroot_build.sh -
 
-    printf "${START_H2}• Left chroot, cleaning up...\n${END_H2}"
+    print_h2 "• Left chroot, cleaning up..."
     # Cleanup after image changes
     sudo rm -f chroot/root/chroot_build.sh
     if [[ -f "chroot/root/config.sh" ]]; then
@@ -128,12 +136,12 @@ function run_chroot() {
     fi
 
     chroot_exit_teardown
-    
+
    sudo  rm -rf chroot/packages
 }
 
 function build_iso() {
-    printf "${START_H1}→ RUNNING build_iso...\n${END_H1}"
+    print_h1 "→ RUNNING build_iso..."
 
     rm -rf image
     mkdir -p image/{casper,isolinux,install}
@@ -173,13 +181,13 @@ EOF
     sudo chroot chroot dpkg-query -W --showformat='${Package} ${Version}\n' | sudo tee image/casper/filesystem.manifest
     sudo cp -v image/casper/filesystem.manifest image/casper/filesystem.manifest-desktop
     sudo cp -v packages/remove-packages.txt image/casper/filesystem.manifest-remove
-    cat packages/live-packages.txt | while read line 
+    cat packages/live-packages.txt | while read line
     do
         # clean the line from backslashes and spaces
         echo $line
         sed -i '/$line/d' image/casper/filesystem.manifest-desktop
     done
-    printf "${START_H2}• Compressing rootfs...\n${END_H2}"
+    print_h2 "• Compressing rootfs..."
     # compress rootfs
     sudo mksquashfs chroot image/casper/filesystem.squashfs \
         -noappend -no-duplicates -no-recovery \
@@ -204,7 +212,7 @@ EOF
 #define TOTALNUM  0
 #define TOTALNUM0  1
 EOF
-    printf "${START_H2}• Creating ISO image...\n${END_H2}"
+    print_h2 "• Creating ISO image..."
     # create iso image
     pushd $SCRIPT_DIR/image
     grub-mkstandalone \
@@ -213,7 +221,7 @@ EOF
         --locales="" \
         --fonts="" \
         "boot/grub/grub.cfg=isolinux/grub.cfg"
-    
+
     (
         cd isolinux && \
         dd if=/dev/zero of=efiboot.img bs=1M count=10 && \
@@ -298,5 +306,4 @@ for ((ii=$start_index; ii<$end_index; ii++)); do
     ${CMD[ii]}
 done
 
-printf "${START_H1}→ $0 - INITIAL BUILD IS DONE!\n${END_H1}"
-
+print_h1 "→ $0 - INITIAL BUILD IS DONE!"
