@@ -1,0 +1,8 @@
+humanity-icon-theme
+snapd
+gnome-software-plugin-snap
+yaru-theme-gnome-shell
+unattended-upgrades
+imagemagick-6.q16
+plymouth
+plymouth-theme-ubuntu-text

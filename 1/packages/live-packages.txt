@@ -1,0 +1,3 @@
+ubiquity 
+ubiquity-casper 
+ubiquity-frontend-gtk 
