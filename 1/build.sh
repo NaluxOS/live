@@ -292,6 +292,4 @@ debootstrap
 run_chroot
 build_iso
 
-#loop through the commands
-
 print_h1 "→ $0 - INITIAL BUILD IS DONE!"
