@@ -7,8 +7,6 @@ set -u                  # treat unset variable as error
 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
-CMD=(setup_host debootstrap run_chroot build_iso)
-
 DATE=`TZ="UTC" date +"%y%m%d-%H%M%S"`
 
 function print_h1() {
@@ -23,38 +21,6 @@ function print_h2() {
   tput sgr0
 }
 
-function help() {
-    # if $1 is set, use $1 as headline message in help()
-    if [ -z ${1+x} ]; then
-        echo -e "This script builds a bootable ubuntu ISO image"
-        echo -e
-    else
-        echo -e $1
-        echo
-    fi
-    echo -e "Supported commands : ${CMD[*]}"
-    echo -e
-    echo -e "Syntax: $0 [start_cmd] [-] [end_cmd]"
-    echo -e "\trun from start_cmd to end_end"
-    echo -e "\tif start_cmd is omitted, start from first command"
-    echo -e "\tif end_cmd is omitted, end with last command"
-    echo -e "\tenter single cmd to run the specific command"
-    echo -e "\tenter '-' as only argument to run all commands"
-    echo -e
-    exit 0
-}
-
-function find_index() {
-    local ret;
-    local i;
-    for ((i=0; i<${#CMD[*]}; i++)); do
-        if [ "${CMD[i]}" == "$1" ]; then
-            index=$i;
-            return;
-        fi
-    done
-    help "Command not found : $1"
-}
 
 function chroot_enter_setup() {
     sudo mount --bind /dev chroot/dev
@@ -275,33 +241,11 @@ cd $SCRIPT_DIR
 
 load_config
 
-# check number of args
-if [[ $# == 0 || $# > 3 ]]; then help; fi
-
-# loop through args
-dash_flag=false
-start_index=0
-end_index=${#CMD[*]}
-for ii in "$@";
-do
-    if [[ $ii == "-" ]]; then
-        dash_flag=true
-        continue
-    fi
-    find_index $ii
-    if [[ $dash_flag == false ]]; then
-        start_index=$index
-    else
-        end_index=$(($index+1))
-    fi
-done
-if [[ $dash_flag == false ]]; then
-    end_index=$(($start_index + 1))
-fi
+setup_host
+debootstrap
+run_chroot
+build_iso
 
 #loop through the commands
-for ((ii=$start_index; ii<$end_index; ii++)); do
-    ${CMD[ii]}
-done
 
 print_h1 "→ $0 - INITIAL BUILD IS DONE!"
