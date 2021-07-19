@@ -1,13 +1,54 @@
 #!/bin/bash
 
-set -e                  # exit on error
-set -o pipefail         # exit on pipeline error
-set -u                  # treat unset variable as error
+#set -e                  # exit on error
+#set -o pipefail         # exit on pipeline error
+#set -u                  # treat unset variable as error
 #set -x
 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 DATE=`TZ="UTC" date +"%y%m%d-%H%M%S"`
+
+function parse_options() {
+  options=$(getopt -o "s h" -l "skip-setup-host help" -- "$@")
+
+  # Show usage if getopt fails to parse options
+  if ! [ $? -eq 0 ]; then
+    help
+    exit 1
+  fi
+
+RUN_SETUP_HOST=true
+
+eval set -- "$options"
+  while true; do
+    case "$1" in
+      -s | --skip-setup-host)
+      RUN_SETUP_HOST=false
+      ;;
+
+      -h | --help)
+      help
+      exit 0
+      ;;
+
+      --)
+      shift
+      break
+      ;;
+    esac
+    shift
+  done
+
+}
+
+#TODO Make it look nice
+function help() {
+  cat << EOF
+Options:
+  -s --skip-setup-host
+EOF
+}
 
 function print_h1() {
   tput setaf 4 && tput bold
@@ -239,9 +280,14 @@ EOF
 # we always stay in $SCRIPT_DIR
 cd $SCRIPT_DIR
 
+parse_options "$@"
 load_config
 
-setup_host
+
+if [ $RUN_SETUP_HOST == true ]; then
+  setup_host
+fi
+
 debootstrap
 run_chroot
 build_iso
