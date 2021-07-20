@@ -7,8 +7,6 @@
 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
-DATE=`TZ="UTC" date +"%y%m%d-%H%M%S"`
-
 function parse_options() {
   options=$(getopt -o "s h" -l "skip-setup-host help" -- "$@")
 
