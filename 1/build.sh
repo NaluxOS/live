@@ -129,7 +129,7 @@ function run_chroot() {
 
     print_h2 "• Launching into chroot..."
     # Launch into chroot environment to build install image.
-    sudo chroot chroot /root/chroot_build.sh -
+    sudo chroot chroot /root/chroot_build.sh
 
     print_h2 "• Left chroot, cleaning up..."
     # Cleanup after image changes
