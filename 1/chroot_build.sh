@@ -1,65 +1,20 @@
 #!/bin/bash
-
-set -e                  # exit on error
-set -o pipefail         # exit on pipeline error
-set -u                  # treat unset variable as error
-#set -x
-
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
-CMD=(setup_host install_pkg finish_up)
-
-START_H1="\r`tput setaf 4 && tput bold`"
-END_H1=`tput sgr0`
-
-START_H2="\r`tput setaf 6 && tput bold`"
-END_H2=`tput sgr0`
-
-function help() {
-    # if $1 is set, use $1 as headline message in help()
-    if [ -z ${1+x} ]; then
-        echo -e "This script builds Ubuntu from scratch"
-        echo -e
-    else
-        echo -e $1
-        echo
-    fi
-    echo -e "Supported commands : ${CMD[*]}"
-    echo -e
-    echo -e "Syntax: $0 [start_cmd] [-] [end_cmd]"
-    echo -e "\trun from start_cmd to end_end"
-    echo -e "\tif start_cmd is omitted, start from first command"
-    echo -e "\tif end_cmd is omitted, end with last command"
-    echo -e "\tenter single cmd to run the specific command"
-    echo -e "\tenter '-' as only argument to run all commands"
-    echo -e
-    exit 0
+function print_h1() {
+  tput setaf 4 && tput bold
+  echo "$@"
+  tput sgr0
 }
 
-function find_index() {
-    local ret;
-    local i;
-    for ((i=0; i<${#CMD[*]}; i++)); do
-        if [ "${CMD[i]}" == "$1" ]; then
-            index=$i;
-            return;
-        fi
-    done
-    help "Command not found : $1"
+function print_h2() {
+  tput setaf 6 && tput bold
+  echo "$@"
+  tput sgr0
 }
 
-function check_host() {
-    if [ $(id -u) -ne 0 ]; then
-        echo "This script should be run as root"
-        exit 1
-    fi
-
-    export HOME=/root
-    export LC_ALL=C
-}
-
-function setup_host() {
-    printf "${START_H1}→ RUNNING setup_host... [chroot]\n${END_H1}"
+function setup_chroot() {
+    print_h1 "→ RUNNING setup_chroot... [chroot]"
 
    cat <<EOF > /etc/apt/sources.list
 deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION main restricted universe multiverse
@@ -74,7 +29,7 @@ EOF
 
     echo "$TARGET_NAME" > /etc/hostname
 
-    printf "${START_H2}• Installing systemd and preparing... [chroot]\n${END_H2}"
+    print_h2 "• Installing systemd and preparing... [chroot]"
     # we need to install systemd first, to configure machine id
     apt-get update
     apt-get install -y libterm-readline-gnu-perl systemd-sysv
@@ -90,20 +45,15 @@ EOF
 
 # Load configuration values from file
 function load_config() {
-    if [[ -f "$SCRIPT_DIR/config.sh" ]]; then 
-        . "$SCRIPT_DIR/config.sh"
-    else
-        >&2 echo "Unable to find config file  $SCRIPT_DIR/config.sh, aborting."
-        exit 1
-    fi
+  . "$SCRIPT_DIR/config.sh"
 }
 
 
 function install_pkg() {
-    printf "${START_H1}→ RUNNING install_pkg... [chroot]\n${END_H1}"
+    print_h1 "→ RUNNING install_pkg... [chroot]"
     apt-get -y upgrade
-    
-    printf "${START_H2}• Installing base live packages... [chroot]\n${END_H2}"    
+
+    print_h2 "• Installing base live packages... [chroot]"
     # install base live packages
     apt-get install -y \
     sudo \
@@ -123,21 +73,21 @@ function install_pkg() {
     grub-pc-bin \
     grub2-common \
     locales
-    
-    printf "${START_H2}• Installing kernel ($TARGET_KERNEL_PACKAGE)... [chroot]\n${END_H2}"
+
+    print_h2 "• Installing kernel ($TARGET_KERNEL_PACKAGE)... [chroot]"
     # install kernel
     apt-get install -y --no-install-recommends $TARGET_KERNEL_PACKAGE
 
-    printf "${START_H2}• Installing packages from package folder... [chroot]\n${END_H2}"
+    print_h2 "• Installing packages from package folder... [chroot]"
     # Call into config function
     customize_image
 
-    printf "${START_H2}• Cleaning up... [chroot]\n${END_H2}"
+    print_h2 "• Cleaning up... [chroot]"
     # remove unused and clean up apt cache
     apt-get autoremove -y
 
 
-    printf "${START_H2}• Configuring locales and resolvconf... [chroot]\n${END_H2}"
+    print_h2 "• Configuring locales and resolvconf... [chroot]}"
     # final touch
     dpkg-reconfigure locales
     dpkg-reconfigure resolvconf
@@ -158,8 +108,8 @@ EOF
     apt-get clean -y
 }
 
-function finish_up() { 
-    printf "${START_H1}→ RUNNING finish_up...\n${END_H1}"
+function finish_up() {
+    print_h1 "→ RUNNING finish_up..."
 
     # truncate machine id (why??)
     truncate -s 0 /etc/machine-id
@@ -174,36 +124,10 @@ function finish_up() {
 # =============   main  ================
 
 load_config
-check_host
 
-# check number of args
-if [[ $# == 0 || $# > 3 ]]; then help; fi
+export HOME=/root
+export LC_ALL=C
 
-# loop through args
-dash_flag=false
-start_index=0
-end_index=${#CMD[*]}
-for ii in "$@";
-do
-    if [[ $ii == "-" ]]; then
-        dash_flag=true
-        continue
-    fi
-    find_index $ii
-    if [[ $dash_flag == false ]]; then
-        start_index=$index
-    else
-        end_index=$(($index+1))
-    fi
-done
-if [[ $dash_flag == false ]]; then
-    end_index=$(($start_index + 1))
-fi
-
-# loop through the commands
-for ((ii=$start_index; ii<$end_index; ii++)); do
-    ${CMD[ii]}
-done
-
-printf "${START_H1}→ $0 - INITIAL BUILD IS DONE!\n${END_H1}"
-
+setup_chroot
+install_pkg
+finish_up
