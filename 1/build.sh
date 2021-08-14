@@ -117,9 +117,7 @@ function configure_chroot() {
 [main]
 rc-manager=resolvconf
 plugins=ifupdown,keyfile
-dns=dnsmasqprint_h1 "→ RUNNING setup_chroot... [chroot]"
-
-cat <<EOF > /etc/apt/sources.list
+dns=dnsmasq
 
 [ifupdown]
 managed=false
