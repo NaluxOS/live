@@ -111,6 +111,32 @@ function debootstrap() {
     sudo debootstrap  --arch=amd64 --variant=minbase $TARGET_UBUNTU_VERSION chroot http://us.archive.ubuntu.com/ubuntu/
 }
 
+function configure_chroot() {
+    # network manager
+    cat <<EOF > chroot/etc/NetworkManager/NetworkManager.conf
+[main]
+rc-manager=resolvconf
+plugins=ifupdown,keyfile
+dns=dnsmasq
+
+[ifupdown]
+managed=false
+EOF
+
+    cat <<EOF > chroot/etc/apt/sources.list
+deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION main restricted universe multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION main restricted universe multiverse
+
+deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-security main restricted universe multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-security main restricted universe multiverse
+
+deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-updates main restricted universe multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-updates main restricted universe multiverse
+EOF
+
+    echo "$TARGET_NAME" > chroot/etc/hostname
+}
+
 function run_chroot() {
     print_h1 "→ RUNNING run_chroot..."
 
@@ -287,6 +313,7 @@ if [ $RUN_SETUP_HOST == true ]; then
 fi
 
 debootstrap
+configure_chroot
 run_chroot
 build_iso
 

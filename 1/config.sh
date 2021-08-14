@@ -28,17 +28,3 @@ export LIVE_PACKAGES=$(awk '{print $0, " "}' packages/live-packages.txt)
 
 # Packages to be removed from both live and installment
 export REMOVE_PACKAGES=$(awk '{print $0, " "}' packages/remove-packages.txt)
-
-# Package customisation function.  Update this function to customize packages
-# present on the installed system.
-function customize_image() {
-    # install common packages
-    apt-get install -y $COMMON_PACKAGES
-    
-    # install live only packages
-    apt-get install -y $LIVE_PACKAGES
-
-    # purge
-    apt-get purge -y $REMOVE_PACKAGES
-}
-
