@@ -123,16 +123,20 @@ dns=dnsmasq
 managed=false
 EOF
 
-    cat <<EOF > chroot/etc/apt/sources.list
-deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION main restricted universe multiverse
-deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION main restricted universe multiverse
+    # Apply apt source entries to the target
+    echo "" > chroot/etc/apt/sources.list
+    cp -R config/apt/sources.list.d/ chroot/etc/apt/
+    # Replace "TARGET_UBUNTU_VERSION" string with actual version
+    sed -i "s/TARGET_UBUNTU_VERSION/$TARGET_UBUNTU_VERSION/g" chroot/etc/apt/sources.list.d/*
 
-deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-security main restricted universe multiverse
-deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-security main restricted universe multiverse
-
-deb http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-updates main restricted universe multiverse
-deb-src http://us.archive.ubuntu.com/ubuntu/ $TARGET_UBUNTU_VERSION-updates main restricted universe multiverse
-EOF
+    # Add keyring entries for every url in config/apt/keyring_urls
+    mkdir -p chroot/usr/share/keyrings/
+    for key_url in $(cat config/apt/keyring_urls)
+    do
+        pushd chroot/usr/share/keyrings
+        wget -qc $key_url
+        popd
+    done
 
     echo "$TARGET_NAME" > chroot/etc/hostname
 }
