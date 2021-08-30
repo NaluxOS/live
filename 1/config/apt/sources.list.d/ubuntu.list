@@ -1,0 +1,2 @@
+deb http://us.archive.ubuntu.com/ubuntu/ TARGET_UBUNTU_VERSION main restricted universe multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ TARGET_UBUNTU_VERSION main restricted universe multiverse
