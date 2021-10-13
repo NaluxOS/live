@@ -103,26 +103,136 @@ function setup_host() {
     print_h1 "→ RUNNING setup_host..."
     sudo apt update
     sudo apt install -y binutils debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools
-    sudo mkdir -p chroot
 }
 
 function debootstrap() {
     print_h1 "→ RUNNING debootstrap..."
-    sudo debootstrap  --arch=amd64 --variant=minbase $TARGET_UBUNTU_VERSION chroot http://us.archive.ubuntu.com/ubuntu/
+
+    #######################################
+    # Create default folders and symlinks #
+    #######################################
+
+    mkdir chroot
+    pushd chroot >/dev/null
+        mkdir boot
+        mkdir dev
+        mkdir etc
+        mkdir home
+        mkdir media
+        mkdir mnt
+        mkdir opt
+        mkdir proc
+        mkdir root
+        mkdir run
+        mkdir srv
+        mkdir sys
+        mkdir tmp
+        mkdir -p usr/{bin,games,include,lib,lib32,lib64,libx32,local,sbin,share,src}
+        mkdir var
+
+        ln -s usr/bin bin
+        ln -s usr/lib lib
+        ln -s usr/lib32 lib32
+        ln -s usr/lib64 lib64
+        ln -s usr/libx32 libx32
+        ln -s usr/sbin sbin
+
+        # .deb files will be stored here until installed
+        mkdir debs
+    popd >/dev/null
+
+    # Download and merge Packages files to extract useful information later
+    wget -q http://archive.ubuntu.com/ubuntu/dists/$TARGET_UBUNTU_VERSION/main/binary-amd64/Packages.xz -O Packages_main.xz
+    xz --decompress Packages_main.xz -c >> Packages
+    wget -q http://archive.ubuntu.com/ubuntu/dists/$TARGET_UBUNTU_VERSION/universe/binary-amd64/Packages.xz -O Packages_universe.xz
+    xz --decompress Packages_universe.xz -c >> Packages
+
+    for package in $(cat packages/base-packages.txt); do
+        # Get the file path on the repo server
+        # e.g. pool/main/a/apt/apt_2.2.3_amd64.deb
+        repo_filepath=$(python3 parse_packages.py Packages $package Filename)
+
+        if ! [[ "$?" == "0" ]]; then
+            echo "Could not parse package Information."
+            echo "Package: $package"
+        fi
+
+        # Get the hash of the package
+        # e.g. 9bd87aaea434a0dca38d5b1bc2c6ced281cb24f0940728f46290ddcc99851434
+        sha256=$(python3 parse_packages.py Packages $package SHA256)
+
+        pushd chroot/debs >/dev/null
+            echo "Downloading $package"
+
+            wget -q "http://archive.ubuntu.com/ubuntu/$repo_filepath"
+
+            if ! [[ "$?" == "0" ]]; then
+                echo "Could not download base package '$package'. Exiting."
+                exit 1
+            fi
+
+
+            # ([^/]*)$ means match everything after the last "/"
+            filename=$(echo $repo_filepath | grep -o --perl-regex "([^/]*)$")
+
+            if ! [[ "$(sha256sum $filename)" == "$sha256  $filename" ]]; then
+                echo "Checksum verification for package '$package' failed."
+                echo "Checksum from package was: '$(sha256sum $filename)'"
+                echo "Downloaded checksum was: '$sha256  $filename'"
+                echo "Exiting."
+                exit 1
+            fi
+        popd >/dev/null
+    done
+
+    # Unpack packages into chroot
+    # So all the tools are available for installing them later
+    pushd chroot >/dev/null
+        for deb in $(find debs/*); do
+            dpkg-deb --fsys-tarfile $deb | tar -h -xf -
+        done 
+    popd >/dev/null
+
+    ##############################
+    # Create system files        #
+    # required by some packages  #
+    ##############################
+
+    mknod -m 666 chroot/dev/zero    c 1 5
+    mknod -m 666 chroot/dev/full    c 1 7
+    mknod -m 666 chroot/dev/random  c 1 8
+    mknod -m 666 chroot/dev/urandom c 1 9
+    mknod -m 666 chroot/dev/tty     c 5 0
+    mknod -m 666 chroot/dev/ptmx    c 5 2
+    mknod -m 666 chroot/dev/console c 5 1
+
+    mkdir -p chroot/dev/pts/ chroot/dev/shm/
+
+    ln -sf /proc/self/fd   chroot/dev/fd
+    ln -sf /proc/self/fd/0 chroot/dev/stdin
+    ln -sf /proc/self/fd/1 chroot/dev/stdout
+    ln -sf /proc/self/fd/2 chroot/dev/stderr
+
+    ln -s /usr/bin/mawk chroot/usr/bin/awk
+
+    # Install all downloaded packages
+    for package in $(cat packages/base-packages.txt); do
+        repo_filepath=$(python3 parse_packages.py Packages $package Filename)
+        filename=$(echo $repo_filepath | grep -o --perl-regex "([^/]*)$")
+
+        print_h1 "$package"
+        dpkg -i --root=chroot --force-depends chroot/debs/$filename
+        echo ""
+    done
+
+    # Cleanup
+    rm -rf chroot/debs
+    rm Packages
+    rm Packages_main.xz
+    rm Packages_universe.xz
 }
 
 function configure_chroot() {
-    # network manager
-    cat <<EOF > chroot/etc/NetworkManager/NetworkManager.conf
-[main]
-rc-manager=resolvconf
-plugins=ifupdown,keyfile
-dns=dnsmasq
-
-[ifupdown]
-managed=false
-EOF
-
     # Apply apt source entries to the target
     echo "" > chroot/etc/apt/sources.list
     cp -R config/apt/sources.list.d/ chroot/etc/apt/

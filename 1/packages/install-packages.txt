@@ -1,6 +1,7 @@
 adwaita-icon-theme
 amd64-microcode
 apt-transport-https
+bsdutils
 btrfs-progs
 casper
 curl
@@ -85,13 +86,14 @@ gnome-tweaks
 gnome-user-docs
 gnome-user-share
 gnome-weather
+grub2-common
 grub-common
 grub-gfxpayload-lists
 grub-pc
 grub-pc-bin
-grub2-common
 hfsprogs
 hfsutils
+hostname
 intel-microcode
 jfsutils
 less
@@ -100,10 +102,7 @@ locales
 lupin-casper
 mesa-utils
 mesa-va-drivers
-mesa-va-drivers
 mesa-vdpau-drivers
-mesa-vdpau-drivers
-mesa-vulkan-drivers
 mesa-vulkan-drivers
 nano
 nautilus
@@ -111,6 +110,8 @@ nautilus-admin
 nautilus-data
 nautilus-extension-gnome-terminal
 nautilus-sendto
+ncurses-base
+ncurses-bin
 net-tools
 network-manager
 ntfs-3g
@@ -120,6 +121,7 @@ reiserfsprogs
 resolvconf
 sudo
 systemd-sysv
+ubuntu-minimal
 ubuntu-standard
 udftools
 unrar
