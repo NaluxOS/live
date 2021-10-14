@@ -19,7 +19,7 @@ Syntax: ./build.sh [start_cmd] [-] [end_cmd]
 
 This script is meant to be run on Ubuntu or Debian based systems - other systems could work but are neither tested nor supported. The script pulls all dependencies automatically via apt.
 
-Every version of Nalux will get its own directory, so work between different versions can be independent. Currently, the build script is not fully automatic as locale config and resolvconf need user input. This is to be fixed soon.
+The build script is not fully automatic as locale config and resolvconf need user input. This is to be fixed soon.
 
 Also, please be make sure that, if you plan to use chroot_build.sh manually (which is not recommended), you are actually in a chroot because the script does not check for that. Otherwise it might install unwanted packages on your main machine.
 
