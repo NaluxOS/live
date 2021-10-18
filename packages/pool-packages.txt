@@ -1,0 +1,10 @@
+amd64-microcode
+intel-microcode
+iucode-tool
+fwupd-signed
+grub-efi-amd64
+grub-efi-amd64-bin
+grub-efi-amd64-signed
+grub-pc
+grub-pc-bin
+grub-gfxpayload-lists

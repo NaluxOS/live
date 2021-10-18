@@ -14,11 +14,17 @@ export TARGET_KERNEL_PACKAGE="linux-generic"
 # the volume id, and the hostname of the live environment are set from this name.
 export TARGET_NAME="nalux"
 
+# The proper name of the distribution
+export TARGET_NAME_PROPER="Nalux"
+
+# The version of the distribution
+export TARGET_VERSION="1"
+
 # The text label shown in GRUB for booting into the live environment
-export GRUB_LIVEBOOT_LABEL="Try Nalux without installing"
+export GRUB_LIVEBOOT_LABEL="Try ${TARGET_NAME_PROPER} without installing"
 
 # The text label shown in GRUB for starting installation
-export GRUB_INSTALL_LABEL="Install Nalux"
+export GRUB_INSTALL_LABEL="Install ${TARGET_NAME_PROPER}"
 
 # Packages for live and installment
 export COMMON_PACKAGES=$(awk '{print $0, " "}' packages/install-packages.txt)
@@ -28,3 +34,6 @@ export LIVE_PACKAGES=$(awk '{print $0, " "}' packages/live-packages.txt)
 
 # Packages to be removed from both live and installment
 export REMOVE_PACKAGES=$(awk '{print $0, " "}' packages/remove-packages.txt)
+
+# Pool Packages for the apt CD-ROM repo
+export POOL_PACKAGES=$(awk '{print $0, " "}' packages/pool-packages.txt)
