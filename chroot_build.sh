@@ -8,6 +8,9 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 export HOME=/root
 export LC_ALL=C
 
+# we need 32-bit support for Steam
+dpkg --add-architecture i386
+
 # we need to install systemd first, to configure machine id
 apt-get update
 apt-get install -y libterm-readline-gnu-perl systemd-sysv
@@ -56,6 +59,13 @@ apt-get purge -y $REMOVE_PACKAGES
 
 # remove unused and clean up apt cache
 apt-get autoremove -y
+
+# download pool packages
+mkdir "/pkg"
+chown -R _apt "/pkg"
+pushd "/pkg"
+sudo -u _apt apt-get download $POOL_PACKAGES
+popd
 
 # final touch
 dpkg-reconfigure locales

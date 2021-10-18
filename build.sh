@@ -7,6 +7,8 @@
 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
+export BUILD_DATE="$(date +%Y%m%d)"
+
 function parse_options() {
   options=$(getopt -o "s h" -l "skip-setup-host help" -- "$@")
 
@@ -236,6 +238,7 @@ function configure_chroot() {
     # Apply apt source entries to the target
     echo "" > chroot/etc/apt/sources.list
     cp -R config/apt/sources.list.d/ chroot/etc/apt/
+    cp -R config/apt/apt.conf.d/ chroot/etc/apt/
     # Replace "TARGET_UBUNTU_VERSION" string with actual version
     sed -i "s/TARGET_UBUNTU_VERSION/$TARGET_UBUNTU_VERSION/g" chroot/etc/apt/sources.list.d/*
 
@@ -287,11 +290,28 @@ function build_iso() {
     print_h1 "→ RUNNING build_iso..."
 
     rm -rf image
-    mkdir -p image/{casper,isolinux,install}
+    mkdir -p image/{casper,isolinux,install,pool,dists,.disk}
 
     # copy kernel files
     sudo cp chroot/boot/vmlinuz-**-**-generic image/casper/vmlinuz
     sudo cp chroot/boot/initrd.img-**-**-generic image/casper/initrd
+    
+    # Paste disk info using envsubst
+    (envsubst < "config/.disk/info") > "image/.disk/info"
+    
+    # copy pool
+    sudo cp -R chroot/pkg/* image/pool
+    sudo chown -R $USER:$USER image/pool
+    
+    # generate dists info
+    pushd "image"
+    mkdir -p "dists/$TARGET_UBUNTU_VERSION/binary-amd64"
+    apt-ftparchive packages "pool" > "dists/$TARGET_UBUNTU_VERSION/binary-amd64/Packages"
+    gzip -k "dists/$TARGET_UBUNTU_VERSION/binary-amd64/Packages"
+    popd
+    
+    # remove the package pool from the later to be squashed FS
+    sudo rm -rf chroot/pkg
 
     # grub
     touch image/ubuntu
@@ -390,7 +410,7 @@ EOF
         -as mkisofs \
         -iso-level 3 \
         -full-iso9660-filenames \
-        -volid "$TARGET_NAME" \
+        -volid "${TARGET_NAME_PROPER} ${TARGET_VERSION}" \
         -eltorito-boot boot/grub/bios.img \
         -no-emul-boot \
         -boot-load-size 4 \
@@ -402,7 +422,7 @@ EOF
         -e EFI/efiboot.img \
         -no-emul-boot \
         -append_partition 2 0xef isolinux/efiboot.img \
-        -output "$SCRIPT_DIR/$TARGET_NAME.iso" \
+        -output "${SCRIPT_DIR}/${TARGET_NAME}_${TARGET_VERSION}_amd64_${BUILD_DATE}.iso" \
         -m "isolinux/efiboot.img" \
         -m "isolinux/bios.img" \
         -graft-points \

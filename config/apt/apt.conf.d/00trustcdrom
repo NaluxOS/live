@@ -1,0 +1,2 @@
+APT::Authentication::TrustCDROM "true";
+
