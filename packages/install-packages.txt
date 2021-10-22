@@ -1,5 +1,4 @@
 adwaita-icon-theme
-amd64-microcode
 apt-transport-https
 bsdutils
 btrfs-progs
@@ -46,8 +45,6 @@ fonts-roboto
 fonts-roboto-unhinted
 fonts-ubuntu
 fonts-urw-base35
-fwupd
-fwupd-signed
 geary
 gedit
 git
@@ -94,7 +91,6 @@ grub-pc-bin
 hfsprogs
 hfsutils
 hostname
-intel-microcode
 jfsutils
 less
 libterm-readline-gnu-perl
