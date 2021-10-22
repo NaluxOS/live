@@ -8,6 +8,8 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 export HOME=/root
 export LC_ALL=C
 
+export DEBIAN_FRONTEND=noninteractive
+
 # we need 32-bit support for Steam
 dpkg --add-architecture i386
 
