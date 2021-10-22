@@ -418,6 +418,8 @@ EOF
 # we always stay in $SCRIPT_DIR
 cd $SCRIPT_DIR
 
+export DEBIAN_FRONTEND=noninteractive
+
 parse_options "$@"
 load_config
 

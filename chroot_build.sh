@@ -8,6 +8,8 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 export HOME=/root
 export LC_ALL=C
 
+export DEBIAN_FRONTEND=noninteractive
+
 # we need to install systemd first, to configure machine id
 apt-get update
 apt-get install -y libterm-readline-gnu-perl systemd-sysv
