@@ -353,6 +353,7 @@ EOF
     print_h2 "• Compressing rootfs..."
     # compress rootfs
     sudo mksquashfs chroot image/casper/filesystem.squashfs \
+    	-comp zstd -Xcompression-level 22 \
         -noappend -no-duplicates -no-recovery \
         -wildcards \
         -e "var/cache/apt/archives/*" \
