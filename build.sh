@@ -217,6 +217,8 @@ function debootstrap() {
 
     ln -s /usr/bin/mawk chroot/usr/bin/awk
 
+    touch chroot/etc/shells
+
     # Install all downloaded packages
     for package in $(cat packages/base-packages.txt); do
         repo_filepath=$(python3 parse_packages.py Packages $package Filename)
@@ -235,6 +237,14 @@ function debootstrap() {
 }
 
 function configure_chroot() {
+    rm chroot/etc/resolv.conf
+
+    cat <<EOF > chroot/etc/resolv.conf
+nameserver 127.0.0.53
+options edns0 trust-ad
+search localdomain
+EOF
+
     # Apply apt source entries to the target
     echo "" > chroot/etc/apt/sources.list
     cp -R config/apt/sources.list.d/ chroot/etc/apt/
@@ -438,6 +448,8 @@ EOF
 
 # we always stay in $SCRIPT_DIR
 cd $SCRIPT_DIR
+
+export DEBIAN_FRONTEND=noninteractive
 
 parse_options "$@"
 load_config
