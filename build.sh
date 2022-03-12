@@ -64,19 +64,19 @@ function print_h2() {
 
 
 function chroot_enter_setup() {
-    sudo mount --bind /dev chroot/dev
-    sudo mount --bind /run chroot/run
-    sudo chroot chroot mount none -t proc /proc
-    sudo chroot chroot mount none -t sysfs /sys
-    sudo chroot chroot mount none -t devpts /dev/pts
+    mount --bind /dev chroot/dev
+    mount --bind /run chroot/run
+    chroot chroot mount none -t proc /proc
+    chroot chroot mount none -t sysfs /sys
+    chroot chroot mount none -t devpts /dev/pts
 }
 
 function chroot_exit_teardown() {
-    sudo chroot chroot umount /proc
-    sudo chroot chroot umount /sys
-    sudo chroot chroot umount /dev/pts
-    sudo umount chroot/dev
-    sudo umount chroot/run
+    chroot chroot umount /proc
+    chroot chroot umount /sys
+    chroot chroot umount /dev/pts
+    umount chroot/dev
+    umount chroot/run
 }
 
 function check_host() {
@@ -103,8 +103,8 @@ function load_config() {
 
 function setup_host() {
     print_h1 "→ RUNNING setup_host..."
-    sudo apt update
-    sudo apt install -y binutils debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools
+    apt update
+    apt install -y xz-utils python3 wget binutils debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools
 }
 
 function debootstrap() {
@@ -270,30 +270,30 @@ function run_chroot() {
     print_h2 "• Preparing chroot environment..."
     # we copy the packages folder into chroot so config.sh can still refer to the text files in packages
 
-    sudo cp -r packages chroot/packages
+    cp -r packages chroot/packages
 
     chroot_enter_setup
 
     # Setup build scripts in chroot environment
-    sudo ln -f $SCRIPT_DIR/chroot_build.sh chroot/root/chroot_build.sh
+    ln -f $SCRIPT_DIR/chroot_build.sh chroot/root/chroot_build.sh
     if [[ -f "$SCRIPT_DIR/config.sh" ]]; then
-        sudo ln -f $SCRIPT_DIR/config.sh chroot/root/config.sh
+        ln -f $SCRIPT_DIR/config.sh chroot/root/config.sh
     fi
 
     print_h2 "• Launching into chroot..."
     # Launch into chroot environment to build install image.
-    sudo chroot chroot /root/chroot_build.sh
+    chroot chroot /root/chroot_build.sh
 
     print_h2 "• Left chroot, cleaning up..."
     # Cleanup after image changes
-    sudo rm -f chroot/root/chroot_build.sh
+    rm -f chroot/root/chroot_build.sh
     if [[ -f "chroot/root/config.sh" ]]; then
-        sudo rm -f chroot/root/config.sh
+        rm -f chroot/root/config.sh
     fi
 
     chroot_exit_teardown
 
-   sudo  rm -rf chroot/packages
+    rm -rf chroot/packages
 }
 
 function build_iso() {
@@ -303,15 +303,15 @@ function build_iso() {
     mkdir -p image/{casper,isolinux,install,pool,dists,.disk}
 
     # copy kernel files
-    sudo cp chroot/boot/vmlinuz-**-**-generic image/casper/vmlinuz
-    sudo cp chroot/boot/initrd.img-**-**-generic image/casper/initrd
+    cp chroot/boot/vmlinuz-**-**-generic image/casper/vmlinuz
+    cp chroot/boot/initrd.img-**-**-generic image/casper/initrd
     
     # Paste disk info using envsubst
     (envsubst < "config/.disk/info") > "image/.disk/info"
     
     # copy pool
-    sudo cp -R chroot/pkg/* image/pool
-    sudo chown -R $USER:$USER image/pool
+    cp -R chroot/pkg/* image/pool
+    chown -R $USER:$USER image/pool
     
     # generate dists info
     pushd "image"
@@ -321,7 +321,7 @@ function build_iso() {
     popd
     
     # remove the package pool from the later to be squashed FS
-    sudo rm -rf chroot/pkg
+    rm -rf chroot/pkg
 
     # grub
     touch image/ubuntu
@@ -351,9 +351,9 @@ menuentry "Check disc for defects" {
 EOF
 
     # generate manifest
-    sudo chroot chroot dpkg-query -W --showformat='${Package} ${Version}\n' | sudo tee image/casper/filesystem.manifest
-    sudo cp -v image/casper/filesystem.manifest image/casper/filesystem.manifest-desktop
-    sudo cp -v packages/remove-packages.txt image/casper/filesystem.manifest-remove
+    chroot chroot dpkg-query -W --showformat='${Package} ${Version}\n' | tee image/casper/filesystem.manifest
+    cp -v image/casper/filesystem.manifest image/casper/filesystem.manifest-desktop
+    cp -v packages/remove-packages.txt image/casper/filesystem.manifest-remove
     cat packages/live-packages.txt | while read line
     do
         # clean the line from backslashes and spaces
@@ -362,7 +362,7 @@ EOF
     done
     print_h2 "• Compressing rootfs..."
     # compress rootfs
-    sudo mksquashfs chroot image/casper/filesystem.squashfs \
+    mksquashfs chroot image/casper/filesystem.squashfs \
         -comp zstd -Xcompression-level 22 \
         -noappend -no-duplicates -no-recovery \
         -wildcards \
@@ -372,7 +372,7 @@ EOF
         -e "tmp/*" \
         -e "tmp/.*" \
         -e "swapfile"
-    printf $(sudo du -sx --block-size=1 chroot | cut -f1) > image/casper/filesystem.size
+    printf $(du -sx --block-size=1 chroot | cut -f1) > image/casper/filesystem.size
 
     # create diskdefines
     cat <<EOF > image/README.diskdefines
@@ -399,7 +399,7 @@ EOF
     (
         cd isolinux && \
         dd if=/dev/zero of=efiboot.img bs=1M count=10 && \
-        sudo mkfs.vfat efiboot.img && \
+        mkfs.vfat efiboot.img && \
         LC_CTYPE=C mmd -i efiboot.img efi efi/boot && \
         LC_CTYPE=C mcopy -i efiboot.img ./bootx64.efi ::efi/boot/
     )
@@ -415,9 +415,9 @@ EOF
 
     cat /usr/lib/grub/i386-pc/cdboot.img isolinux/core.img > isolinux/bios.img
 
-    sudo /bin/bash -c "(find . -type f -print0 | xargs -0 md5sum | grep -v -e 'md5sum.txt' -e 'bios.img' -e 'efiboot.img' > md5sum.txt)"
+    /bin/bash -c "(find . -type f -print0 | xargs -0 md5sum | grep -v -e 'md5sum.txt' -e 'bios.img' -e 'efiboot.img' > md5sum.txt)"
 
-    sudo xorriso \
+    xorriso \
         -as mkisofs \
         -iso-level 3 \
         -full-iso9660-filenames \
