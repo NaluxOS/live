@@ -35,7 +35,8 @@ function parse_options() {
 parse_options
 
 # Prepare environment for docker build
-rm -rf out/*
+rm -rf out/
+mkdir out
 docker container rm nalux
 docker image rm nalux_img
 docker build -t nalux_img .
