@@ -5,6 +5,12 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 # Load configuration values from file
 . "$SCRIPT_DIR/config.sh"
 
+# Temporary resolv.conf for internet connection during installation
+cat << EOF > /etc/resolv.conf
+search localdomain
+nameserver 192.168.1.1
+EOF
+
 export HOME=/root
 export LC_ALL=C
 
