@@ -9,47 +9,6 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 export BUILD_DATE="$(date +%Y%m%d)"
 
-function parse_options() {
-  options=$(getopt -o "s h" -l "skip-setup-host help" -- "$@")
-
-  # Show usage if getopt fails to parse options
-  if ! [ $? -eq 0 ]; then
-    help
-    exit 1
-  fi
-
-RUN_SETUP_HOST=true
-
-eval set -- "$options"
-  while true; do
-    case "$1" in
-      -s | --skip-setup-host)
-      RUN_SETUP_HOST=false
-      ;;
-
-      -h | --help)
-      help
-      exit 0
-      ;;
-
-      --)
-      shift
-      break
-      ;;
-    esac
-    shift
-  done
-
-}
-
-#TODO Make it look nice
-function help() {
-  cat << EOF
-Options:
-  -s --skip-setup-host
-EOF
-}
-
 function print_h1() {
   tput setaf 4 && tput bold
   echo "$@"
@@ -77,18 +36,6 @@ function chroot_exit_teardown() {
     chroot chroot umount /dev/pts
     umount chroot/dev
     umount chroot/run
-}
-
-function check_host() {
-    local os_ver
-    os_ver=`lsb_release -i | grep -E "(Ubuntu|Debian)"`
-    if [[ -z "$os_ver" ]]; then
-        echo "WARNING : OS is not Debian or Ubuntu and is untested"
-    fi
-    if [ $(id -u) -eq 0 ]; then
-        echo "This script should not be run as root"
-        exit 1
-    fi
 }
 
 # Load configuration values from file
@@ -219,6 +166,9 @@ function debootstrap() {
 
     touch chroot/etc/shells
 
+    # Required by dbus but does not exist in docker
+    groupadd messagebus
+
     # Install all downloaded packages
     for package in $(cat packages/base-packages.txt); do
         repo_filepath=$(python3 parse_packages.py Packages $package Filename)
@@ -238,12 +188,7 @@ function debootstrap() {
 
 function configure_chroot() {
     rm chroot/etc/resolv.conf
-
-    cat <<EOF > chroot/etc/resolv.conf
-nameserver 127.0.0.53
-options edns0 trust-ad
-search localdomain
-EOF
+    cp /etc/resolv.conf chroot/etc/resolv.conf
 
     # Apply apt source entries to the target
     echo "" > chroot/etc/apt/sources.list
@@ -433,7 +378,7 @@ EOF
         -e EFI/efiboot.img \
         -no-emul-boot \
         -append_partition 2 0xef isolinux/efiboot.img \
-        -output "${SCRIPT_DIR}/${TARGET_NAME}_${TARGET_VERSION}_amd64_${BUILD_DATE}.iso" \
+        -output "${SCRIPT_DIR}/out/${TARGET_NAME}_${TARGET_VERSION}_amd64_${BUILD_DATE}.iso" \
         -m "isolinux/efiboot.img" \
         -m "isolinux/bios.img" \
         -graft-points \
@@ -451,13 +396,9 @@ cd $SCRIPT_DIR
 
 export DEBIAN_FRONTEND=noninteractive
 
-parse_options "$@"
 load_config
 
-
-if [ $RUN_SETUP_HOST == true ]; then
-  setup_host
-fi
+setup_host
 
 debootstrap
 configure_chroot
